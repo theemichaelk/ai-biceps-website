@@ -1,0 +1,31 @@
+{
+  "domain": "https://tsbrenterprises.com",
+  "localCopyPath": "C:\\inetpub\\wwwroot\\tsbrenterprises",
+  "ftp": {
+    "host": "ftp.tsbrenterprises.com",
+    "user": "your-ftp-username",
+    "remotePath": "/public_html",
+    "passwordEnv": "TSBR_FTP_PASSWORD"
+  },
+  "sftp": {
+    "host": "sftp.tsbrenterprises.com",
+    "user": "your-sftp-username",
+    "remotePath": "/var/www/tsbrenterprises",
+    "passwordEnv": "TSBR_SFTP_PASSWORD",
+    "port": 22
+  },
+  "exclude": [
+    "_build.py",
+    "_content.py",
+    "_content_extra.py",
+    "_config.py",
+    "formspree.json",
+    ".env",
+    ".env.example",
+    ".gitignore",
+    "deploy.config.example.json",
+    "deploy.config.json",
+    "scripts",
+    "__pycache__"
+  ]
+}

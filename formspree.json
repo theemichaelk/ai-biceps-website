@@ -1,0 +1,24 @@
+{
+  "forms": {
+    "tsbr-inquiries": {
+      "name": "TSBR Website Inquiries",
+      "fields": {
+        "name": { "type": "text", "required": true },
+        "business": { "type": "text", "required": true },
+        "phone": { "type": "text", "required": false },
+        "email": { "type": "email", "required": false },
+        "website": { "type": "url", "required": false },
+        "city": { "type": "text", "required": false },
+        "industry": { "type": "text", "required": false },
+        "message": { "type": "text", "required": false },
+        "_subject": { "type": "text", "required": false }
+      },
+      "actions": [
+        {
+          "type": "email",
+          "to": "hello@tsbrenterprises.com"
+        }
+      ]
+    }
+  }
+}

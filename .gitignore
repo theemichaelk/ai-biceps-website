@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+*.log
+.env
+deploy.config.json
+scripts/node_modules/
+scripts/package-lock.json
+scripts/visual-report/
