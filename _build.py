@@ -972,9 +972,16 @@ def dominance_showcase_html(depth=0):
 def form_open(subject, css_class=""):
     cls = f' class="{css_class}"' if css_class else ""
     if FORMSPREE_ENDPOINT:
+        extras = f'<input type="hidden" name="_subject" value="{hescape(subject)}">'
+        if "formsubmit.co" in FORMSPREE_ENDPOINT:
+            extras += (
+                f'<input type="hidden" name="_next" value="{hescape(page_url("contact.html"))}">'
+                '<input type="hidden" name="_captcha" value="false">'
+                '<input type="hidden" name="_template" value="table">'
+            )
         return (
             f'<form action="{hescape(FORMSPREE_ENDPOINT)}" method="POST"{cls}>'
-            f'<input type="hidden" name="_subject" value="{hescape(subject)}">'
+            f'{extras}'
         )
     return (
         f'<form action="#" method="POST"{cls} data-tsbr-form="fallback" data-tsbr-email="{EMAIL}">'

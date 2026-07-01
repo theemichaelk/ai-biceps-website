@@ -8,3 +8,4 @@ deploy.config.json
 scripts/node_modules/
 scripts/package-lock.json
 scripts/visual-report/
+.wrangler/
