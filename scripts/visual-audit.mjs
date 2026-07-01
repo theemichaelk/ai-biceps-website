@@ -21,7 +21,13 @@ const PAGES = [
   { path: '/case-studies.html', name: 'case-studies' },
   { path: '/locations.html', name: 'locations' },
   { path: '/blog.html', name: 'blog' },
+  { path: '/ai-news.html', name: 'ai-news' },
+  { path: '/resources.html', name: 'resources' },
   { path: '/gmb-optimization.html', name: 'gmb' },
+  { path: '/ai-search-optimization.html', name: 'ai-search' },
+  { path: '/local-seo-texas.html', name: 'local-seo' },
+  { path: '/arlington-tx-seo-marketing-consultant.html', name: 'location-arlington' },
+  { path: '/blog/gmb-velocity-system-texas.html', name: 'blog-post-gmb' },
   { path: '/privacy.html', name: 'privacy' },
   { path: '/404.html', name: '404' },
 ];
@@ -81,6 +87,19 @@ async function checkPage(page, { path, name }) {
     issues.push(`${name}: ${checks.brokenImages} broken image(s)${srcs}`);
   }
   if (checks.overflowX) issues.push(`${name}: horizontal overflow`);
+
+  if (path.startsWith('/blog/')) {
+    const crumbs = await page.evaluate(() => {
+      const links = [...document.querySelectorAll('.breadcrumb a')].map((a) => a.getAttribute('href'));
+      return { links, homeOk: links.some((h) => h && !h.includes('../..')) };
+    });
+    if (!crumbs.homeOk) issues.push(`${name}: breadcrumb uses invalid ../../ paths`);
+    const homeStatus = await page.evaluate(async (href) => {
+      const res = await fetch(new URL(href, window.location.href));
+      return res.status;
+    }, crumbs.links[0] || '../index.html');
+    if (homeStatus >= 400) issues.push(`${name}: breadcrumb Home link HTTP ${homeStatus}`);
+  }
 
   await page.screenshot({ path: join(reportDir, `${name}.png`), fullPage: false });
   await page.setViewportSize({ width: 390, height: 844 });

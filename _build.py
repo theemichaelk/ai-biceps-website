@@ -2,6 +2,9 @@
 """Generate all TSBR website pages with unified design and rich content."""
 
 import json
+import random
+import re
+from datetime import date
 from html import escape as hescape
 from pathlib import Path
 
@@ -10,7 +13,11 @@ from _content import (
     ABOUT_VALUES,
     AI_NEWS_ARTICLES,
     AUDIT_INCLUDES,
+    AUDIT_SUMMARY,
     BLOG_ARTICLES,
+    BLOG_IMAGE_MAP,
+    BLOG_INLINE_IMAGES,
+    BLOG_YOUTUBE_VIDEOS,
     CASE_STUDIES,
     FAQ_ITEMS,
     INDUSTRIES,
@@ -36,10 +43,11 @@ from _content_extra import (
     FOUNDER_BIO_HTML,
     GMB_SIGNALS,
     KEYWORD_INTENTS,
+    DOMINANCE_SHOWCASE,
     MEDIA_GALLERY,
     VIDEO_ASSETS,
 )
-from _config import FORMSPREE_ENDPOINT, GA_MEASUREMENT_ID, GOOGLE_MAPS_EMBED
+from _config import FORMSPREE_ENDPOINT, GA_MEASUREMENT_ID, GOOGLE_MAPS_EMBED, SOCIAL_URLS
 
 HOME_FAQ = FAQ_ITEMS[:6]
 FULL_FAQ = FAQ_ITEMS + EXTRA_FAQ
@@ -67,7 +75,15 @@ YEAR = "2026"
 OG_IMAGE = f"{DOMAIN}/assets/images/hero-branded-aggressive-10.jpg"
 GEO_LAT = 32.7357
 GEO_LON = -97.1081
-SITEMAP_LASTMOD = "2026-06-19"
+_BUILD_DATE = date.today()
+SITEMAP_LASTMOD = _BUILD_DATE.isoformat()
+BUILD_VERSION = f"{_BUILD_DATE.strftime('%Y%m%d')}v12"
+
+PORTFOLIO_IMAGES = [
+    "assets/images/hero-branded-8.jpg",
+    "assets/images/hero-branded-9.jpg",
+    "assets/images/hero-branded-aggressive-10.jpg",
+]
 
 BLOG_SERVICE_MAP = {
     "GMB": "gmb-optimization.html",
@@ -239,7 +255,7 @@ def schema_service(name, description, url):
 
 def schema_article(title, description, url, date_published, tag=""):
     return {
-        "@type": "Article",
+        "@type": "BlogPosting",
         "headline": title,
         "description": description,
         "url": url,
@@ -367,8 +383,8 @@ def head(title, description, depth=0, canonical=None, og_type="website", og_imag
     img = og_image or OG_IMAGE
     fonts = (
         "https://fonts.googleapis.com/css2?"
-        "family=Exo+2:ital,wght@0,400;0,500;0,600;0,700;1,400"
-        "&family=Orbitron:wght@500;600;700;800&display=swap"
+        "family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400"
+        "&family=Sora:wght@400;500;600;700&display=swap"
     )
     return f"""<!DOCTYPE html>
 <html lang="en-US">
@@ -383,12 +399,12 @@ def head(title, description, depth=0, canonical=None, og_type="website", og_imag
     <meta name="geo.placename" content="Arlington, Texas">
     <meta name="geo.position" content="{GEO_LAT};{GEO_LON}">
     <meta name="ICBM" content="{GEO_LAT}, {GEO_LON}">
-    <meta name="theme-color" content="#030508">
+    <meta name="theme-color" content="#050508">
     <link rel="canonical" href="{can}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="{fonts}">
-    <link rel="stylesheet" href="{p}css/site.css">
+    <link rel="stylesheet" href="{p}css/site.css?v={BUILD_VERSION}">
 {favicon_links(depth)}
 {analytics_snippet()}
     <meta property="og:type" content="{og_type}">
@@ -421,7 +437,7 @@ def header(depth=0, active="", body_class=""):
     ]
     nav = ""
     for href, label, key in links:
-        cls = ' style="color:var(--gold);font-weight:600"' if key == active else ""
+        cls = ' class="nav-active"' if key == active else ""
         nav += f'                <a href="{p}{href}"{cls}>{label}</a>\n'
     mnav = "".join(f'            <a href="{p}{href}">{label}</a>\n' for href, label, _ in links)
 
@@ -511,14 +527,18 @@ def footer(depth=0):
             </div>
         </div>
     </footer>
-    <script src="{p}js/site.js" defer></script>
+    <script src="{p}js/site.js?v={BUILD_VERSION}" defer></script>
 </body>
 </html>"""
 
 
 def write(path, content):
     path.write_text(content, encoding="utf-8")
-    print(f"  wrote {path.name}")
+    try:
+        rel = path.relative_to(ROOT)
+    except ValueError:
+        rel = path.name
+    print(f"  wrote {rel}")
 
 
 def page_template(
@@ -557,6 +577,396 @@ def industries_html():
 
 def audit_list_html():
     return '<ul class="feature-list">' + "".join(f'<li><span class="check">&#10003;</span><span>{item}</span></li>' for item in AUDIT_INCLUDES) + "</ul>"
+
+
+def audit_summary_html():
+    return '<ul class="feature-list feature-list-compact">' + "".join(
+        f'<li><span class="check">&#10003;</span><span>{hescape(item)}</span></li>' for item in AUDIT_SUMMARY
+    ) + "</ul>"
+
+
+def sorted_blog_articles():
+    return sorted(BLOG_ARTICLES, key=lambda a: a.get("published", ""), reverse=True)
+
+
+def blog_image(article):
+    return article.get("image") or BLOG_IMAGE_MAP.get(article["slug"], "assets/images/hero-branded-aggressive-10.jpg")
+
+
+def blog_cards_html(limit=None, depth=0, articles=None):
+    p = prefix(depth)
+    if articles is None:
+        articles = sorted_blog_articles()
+    if limit:
+        articles = articles[:limit]
+    parts = []
+    for a in articles:
+        img = blog_image(a)
+        pub = a.get("published", "")
+        date_html = f'<time datetime="{pub}">{pub}</time>' if pub else ""
+        read_time = hescape(a.get("read_time", ""))
+        parts.append(
+            f'<a href="{p}blog/{a["slug"]}" class="card card-link blog-card">'
+            f'<div class="blog-card-image"><img src="{p}{img}" alt="{hescape(a["title"])}" loading="lazy" width="640" height="360"></div>'
+            f'<div class="blog-card-body"><div class="tag">{hescape(a["tag"])}</div>'
+            f'<h3>{hescape(a["title"])}</h3><p>{hescape(a["desc"])}</p>'
+            f'<div class="blog-card-meta">{date_html}<span>{read_time} read</span></div>'
+            f'<span class="link-arrow">Read article &rarr;</span></div></a>'
+        )
+    return "\n".join(parts)
+
+
+def section_bg_media_html(video_src=None, image_src=None, poster=None, depth=0):
+    p = prefix(depth)
+    if video_src:
+        poster_attr = f' poster="{p}{poster}"' if poster else ""
+        media = (
+            f'<video autoplay muted loop playsinline preload="metadata"{poster_attr}>'
+            f'<source src="{p}{video_src}" type="video/mp4"></video>'
+        )
+    elif image_src:
+        media = f'<img src="{p}{image_src}" alt="" loading="lazy" width="1920" height="1080">'
+    else:
+        return ""
+    return (
+        f'<div class="section-bg-media" aria-hidden="true">{media}</div>'
+        f'<div class="section-bg-scrim" aria-hidden="true"></div>'
+    )
+
+
+def blog_hero_banners_html(depth=0):
+    p = prefix(depth)
+    articles = sorted_blog_articles()
+    slides = []
+    total = len(articles)
+    for i, a in enumerate(articles):
+        img = blog_image(a)
+        active = " is-active" if i == 0 else ""
+        pub = a.get("published", "")
+        date_html = f'<time datetime="{pub}">{pub}</time>' if pub else ""
+        read_time = hescape(a.get("read_time", ""))
+        slides.append(
+            f'<a href="{p}blog/{a["slug"]}" class="blog-hero-slide{active}" data-slide="{i}">'
+            f'<div class="blog-hero-slide-bg"><img src="{p}{img}" alt="{hescape(a["title"])}" loading="{"eager" if i == 0 else "lazy"}" width="1280" height="720"></div>'
+            f'<div class="blog-hero-slide-overlay"></div>'
+
+            f'<div class="blog-hero-slide-content">'
+            f'<div class="blog-hero-slide-top">'
+            f'<span class="blog-hero-label">Signal {i + 1:02d} / {total:02d}</span>'
+            f'<span class="blog-hero-meta"><span class="blog-hero-tag">{hescape(a["tag"])}</span>{date_html}'
+            f'<span class="blog-hero-read">{read_time} read</span></span>'
+            f'</div>'
+            f'<h3>{hescape(a["title"])}</h3>'
+            f'<p>{hescape(a["desc"])}</p>'
+            f'<span class="link-arrow blog-hero-cta">Access intelligence &rarr;</span>'
+            f'</div></a>'
+        )
+    dots = "".join(
+        f'<button type="button" class="blog-hero-dot{" is-active" if i == 0 else ""}" data-slide="{i}" aria-label="Show slide {i + 1}"></button>'
+        for i in range(len(slides))
+    )
+    return (
+        f'<section class="blog-hero-strip" aria-label="Latest blog insights">'
+        f'<div class="blog-hero-strip-bg" aria-hidden="true">'
+        f'<video autoplay muted loop playsinline preload="metadata" poster="{p}assets/images/blog-gmb-velocity.jpg">'
+        f'<source src="{p}assets/videos/hero-branded-aggressive-3.mp4" type="video/mp4">'
+        f'</video></div>'
+        f'<div class="blog-hero-strip-scrim" aria-hidden="true"></div>'
+        f'<div class="blog-hero-strip-grid" aria-hidden="true"></div>'
+        f'<div class="blog-hero-strip-head container">'
+        f'<span class="eyebrow">Intelligence Feed</span>'
+        f'<h2>Live SEO intelligence from the TSBR lab</h2>'
+        f'<p>Every banner links to a full article and refreshes automatically when new posts ship.</p>'
+        f'</div>'
+        f'<div class="blog-hero-carousel-wrap">'
+        f'<div class="blog-hero-carousel hud-frame" id="blog-hero-carousel">{"".join(slides)}</div>'
+        f'<div class="blog-hero-controls">'
+        f'<div class="blog-hero-progress" aria-hidden="true"><div class="blog-hero-progress-bar" id="blog-hero-progress"></div></div>'
+        f'<div class="blog-hero-dots">{dots}</div>'
+        f'</div></div></section>'
+    )
+
+
+BLOG_TOPIC_LABELS = {
+    "GMB": "GMB & Map Pack",
+    "Guide": "SEO Guides",
+    "AI": "AI Search",
+    "B2B": "B2B Local SEO",
+    "Technical": "Technical SEO",
+}
+
+BLOG_RELATED_TOPICS = [
+    ("GMB Optimization", "gmb-optimization.html"),
+    ("AI Search", "ai-search-optimization.html"),
+    ("Local SEO Texas", "local-seo-texas.html"),
+    ("B2B Lead Generation", "b2b-lead-generation.html"),
+    ("Case Studies", "case-studies.html"),
+    ("AI News", "ai-news.html"),
+]
+
+BLOG_TAG_RELATED = {
+    "GMB": ["Guide", "Technical"],
+    "Guide": ["GMB", "Technical"],
+    "AI": ["Guide", "B2B"],
+    "B2B": ["GMB", "AI"],
+    "Technical": ["GMB", "Guide"],
+}
+
+
+def blog_tag_anchor(tag):
+    return tag.lower().replace(" ", "-")
+
+
+def blog_tag_counts():
+    counts = {}
+    for article in BLOG_ARTICLES:
+        tag = article["tag"]
+        counts[tag] = counts.get(tag, 0) + 1
+    return sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+
+
+def blog_sidebar_tag_posts(article, depth=1, limit=4):
+    tag = article["tag"]
+    recent = sorted_blog_articles()
+    html = ""
+    for a in recent:
+        if a["tag"] == tag and a["slug"] != article["slug"]:
+            html += blog_sidebar_post_link(a, depth, thumb=True)
+            if html.count("blog-sidebar-post-thumb") >= limit:
+                return html
+    if html:
+        return html
+    for related_tag in BLOG_TAG_RELATED.get(tag, []):
+        for a in recent:
+            if a["tag"] == related_tag and a["slug"] != article["slug"]:
+                html += blog_sidebar_post_link(a, depth, thumb=True)
+                if html.count("blog-sidebar-post-thumb") >= limit:
+                    return html
+    return html
+
+
+def blog_category_sections_html():
+    sections = []
+    articles = sorted_blog_articles()
+    for tag_key, label in BLOG_TOPIC_LABELS.items():
+        posts = [a for a in articles if a["tag"] == tag_key]
+        if not posts:
+            continue
+        cards = blog_cards_html(articles=posts)
+        anchor = blog_tag_anchor(tag_key)
+        sections.append(
+            f'<section class="section blog-category-section" id="{anchor}">'
+            f'<div class="container">'
+            f'<div class="section-header section-header-left">'
+            f'<div class="eyebrow">{hescape(label)}</div>'
+            f'<h2>{hescape(label)}</h2>'
+            f'<p>{len(posts)} article{"s" if len(posts) != 1 else ""} on {hescape(label.lower())} for Texas B2B companies.</p>'
+            f"</div>"
+            f'<div class="card-grid card-grid-2 card-grid-3">{cards}</div>'
+            f"</div></section>"
+        )
+    return "\n".join(sections)
+
+
+def home_audit_form_html():
+    return (
+        f"{form_open('TSBR Homepage Free Audit Request')}"
+        f'<div class="form-group"><label>Your Name</label><input type="text" name="name" required></div>'
+        f'<div class="form-group" style="margin-top:0.75rem"><label>Email</label>'
+        f'<input type="email" name="email" required></div>'
+        f'<div class="form-group" style="margin-top:0.75rem"><label>Phone</label>'
+        f'<input type="tel" name="phone" required></div>'
+        f'<div class="form-group" style="margin-top:0.75rem"><label>Biggest local search challenge</label>'
+        f'<textarea name="message" rows="3" placeholder="Map Pack, AI visibility, citations, leads..." required></textarea></div>'
+        f'<button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem">Request Free Audit</button>'
+        f"{form_privacy_note()}</form>"
+    )
+
+
+def blog_sidebar_post_link(article, depth=1, thumb=False):
+    p = prefix(depth)
+    title = hescape(article["title"])
+    slug = article["slug"]
+    pub = article.get("published", "")
+    search_key = hescape(article["title"].lower())
+    if thumb:
+        img = blog_image(article)
+        date_html = f'<time datetime="{pub}">{pub}</time>' if pub else ""
+        return (
+            f'<a href="{p}blog/{slug}" class="blog-sidebar-post blog-sidebar-post-thumb" '
+            f'data-search-title="{search_key}">'
+            f'<img src="{p}{img}" alt="{title}" loading="lazy" width="72" height="54">'
+            f'<span><strong>{title}</strong>{date_html}</span></a>'
+        )
+    return (
+        f'<li><a href="{p}blog/{slug}" data-search-title="{search_key}">{title}</a></li>'
+    )
+
+
+def blog_sidebar_html(article, depth=1):
+    p = prefix(depth)
+    founder_img = f'{p}{FOUNDER["image"]}'
+    founder_name = hescape(FOUNDER["name"])
+    founder_short = hescape(FOUNDER["short_name"])
+    founder_title = hescape(FOUNDER["title"])
+    founder_blurb = hescape(FOUNDER["bio"][0][:220] + "...")
+    tag = article["tag"]
+    tag_label = BLOG_TOPIC_LABELS.get(tag, tag)
+
+    recent = sorted_blog_articles()
+
+    recent_thumb_html = ""
+    thumb_count = 0
+    for a in recent:
+        if a["slug"] == article["slug"]:
+            continue
+        recent_thumb_html += blog_sidebar_post_link(a, depth, thumb=True)
+        thumb_count += 1
+        if thumb_count >= 8:
+            break
+
+    tag_posts = blog_sidebar_tag_posts(article, depth)
+
+    breaking = ""
+    for item in AI_NEWS_ARTICLES[:4]:
+        slug = item.get("slug", "")
+        href = f"{p}ai-news.html#{slug}" if slug else f"{p}ai-news.html"
+        breaking += f'<li><a href="{href}">{hescape(item["title"])}</a></li>'
+
+    browse_topics = ""
+    for key, label in BLOG_TOPIC_LABELS.items():
+        browse_topics += f'<li><a href="{p}blog.html#{blog_tag_anchor(key)}">{hescape(label)}</a></li>'
+
+    categories = ""
+    for key, count in blog_tag_counts():
+        label = BLOG_TOPIC_LABELS.get(key, key)
+        categories += (
+            f'<li><a href="{p}blog.html#{blog_tag_anchor(key)}">'
+            f'{hescape(label)} <span class="blog-sidebar-count">{count}</span></a></li>'
+        )
+
+    related_topics = "".join(
+        f'<li><a href="{p}{href}">{hescape(label)}</a></li>'
+        for label, href in BLOG_RELATED_TOPICS
+    )
+
+    return f"""
+            <aside class="blog-sidebar" id="blog-sidebar" aria-label="Explore">
+                <div class="blog-sidebar-inner">
+                    <div class="blog-sidebar-head">
+                        <h2>Explore</h2>
+                        <button type="button" class="blog-sidebar-close" id="blog-sidebar-close" aria-label="Close sidebar">&times;</button>
+                    </div>
+
+                    <div class="blog-sidebar-block">
+                        <h3 class="blog-sidebar-title">Search Posts</h3>
+                        <label class="visually-hidden" for="blog-sidebar-search">Search posts</label>
+                        <input type="search" id="blog-sidebar-search" class="blog-sidebar-search" placeholder="Search posts&hellip;" autocomplete="off" data-blog-search>
+                    </div>
+
+                    <div class="blog-sidebar-block blog-sidebar-person-block">
+                        <h3 class="blog-sidebar-title">Founder</h3>
+                        <div class="blog-sidebar-person">
+                            <img src="{founder_img}" alt="{hescape(FOUNDER["image_alt"])}" loading="lazy" width="64" height="64">
+                            <div>
+                                <strong>{founder_name}</strong>
+                                <span>{founder_title}</span>
+                            </div>
+                        </div>
+                        <p>{founder_blurb}</p>
+                        <a href="{p}about.html" class="blog-sidebar-link">About our founder</a>
+                    </div>
+
+                    <div class="blog-sidebar-block blog-sidebar-person-block">
+                        <h3 class="blog-sidebar-title">Author</h3>
+                        <div class="blog-sidebar-person">
+                            <img src="{founder_img}" alt="{founder_short}" loading="lazy" width="64" height="64">
+                            <div>
+                                <strong>{founder_short}</strong>
+                                <span>Senior Texas SEO Strategist</span>
+                            </div>
+                        </div>
+                        <p>Seasoned strategist with expertise in GMB, AI Overviews, and Texas B2B local search — delivering actionable intelligence for commercial buyers.</p>
+                        <div class="blog-sidebar-social">
+                            <a href="{hescape(SOCIAL_URLS["facebook"])}" target="_blank" rel="noopener noreferrer" aria-label="Facebook">Facebook</a>
+                            <a href="{hescape(SOCIAL_URLS["twitter"])}" target="_blank" rel="noopener noreferrer" aria-label="Twitter">Twitter</a>
+                            <a href="{hescape(SOCIAL_URLS["instagram"])}" target="_blank" rel="noopener noreferrer" aria-label="Instagram">Instagram</a>
+                            <a href="{hescape(SOCIAL_URLS["linkedin"])}" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">Linkedin</a>
+                        </div>
+                    </div>
+
+                    <div class="blog-sidebar-block">
+                        <h3 class="blog-sidebar-title">About The Stone Builders Rejected</h3>
+                        <p>Your Texas source for B2B local SEO intelligence — Google Business Profile strategy, Map Pack dominance, AI Overview visibility, and lead systems for commercial markets statewide.</p>
+                        <a href="{p}about.html" class="blog-sidebar-link">Learn more</a>
+                    </div>
+
+                    <div class="blog-sidebar-block blog-sidebar-searchable">
+                        <h3 class="blog-sidebar-title">Breaking News</h3>
+                        <ul class="blog-sidebar-list">{breaking}</ul>
+                    </div>
+
+                    <div class="blog-sidebar-block blog-sidebar-searchable">
+                        <h3 class="blog-sidebar-title">Recent Posts</h3>
+                        <div class="blog-sidebar-posts">{recent_thumb_html}</div>
+                    </div>
+
+                    <div class="blog-sidebar-block blog-sidebar-searchable">
+                        <h3 class="blog-sidebar-title">In {hescape(tag_label)}</h3>
+                        <div class="blog-sidebar-posts">{tag_posts if tag_posts else f'<p class="blog-sidebar-empty">Browse related articles below or check <a href="{p}blog.html#{blog_tag_anchor(tag)}">{hescape(tag_label)}</a>.</p>'}</div>
+                        <a href="{p}blog.html#{blog_tag_anchor(tag)}" class="blog-sidebar-link">All {hescape(tag_label)} &rarr;</a>
+                    </div>
+
+                    <div class="blog-sidebar-block">
+                        <h3 class="blog-sidebar-title">Related Topics</h3>
+                        <ul class="blog-sidebar-list blog-sidebar-pills">{related_topics}</ul>
+                    </div>
+
+                    <div class="blog-sidebar-block">
+                        <h3 class="blog-sidebar-title">Subscribe</h3>
+                        <p class="blog-sidebar-sub">Texas SEO intelligence delivered to your inbox.</p>
+                        <form class="blog-sidebar-subscribe" action="#" method="POST" data-tsbr-form="fallback" data-tsbr-email="{EMAIL}">
+                            <input type="hidden" name="_subject" value="TSBR Blog Newsletter Signup">
+                            <label class="visually-hidden" for="blog-sidebar-email">Newsletter email</label>
+                            <input type="email" id="blog-sidebar-email" name="email" placeholder="Enter email" required>
+                            <button type="submit" aria-label="Subscribe">&rsaquo;</button>
+                        </form>
+                    </div>
+
+                    <div class="blog-sidebar-block">
+                        <h3 class="blog-sidebar-title">Browse Topics</h3>
+                        <ul class="blog-sidebar-list">{browse_topics}</ul>
+                    </div>
+
+                    <div class="blog-sidebar-block">
+                        <h3 class="blog-sidebar-title">Post Categories</h3>
+                        <ul class="blog-sidebar-list blog-sidebar-categories">{categories}</ul>
+                    </div>
+
+                    <a href="{p}index.html" class="blog-sidebar-home">&larr; Back to Homepage</a>
+                </div>
+            </aside>
+            <button type="button" class="blog-sidebar-open" id="blog-sidebar-open" aria-controls="blog-sidebar" aria-expanded="false">Explore</button>"""
+
+
+def dominance_showcase_html(depth=0):
+    p = prefix(depth)
+    featured = DOMINANCE_SHOWCASE[0]
+    rest = DOMINANCE_SHOWCASE[1:]
+    feature_html = (
+        f'<article class="dominance-feature dominance-feature-hero">'
+        f'<div class="dominance-feature-media"><img src="{p}{featured[0]}" alt="{hescape(featured[1])}" loading="lazy" width="900" height="560"></div>'
+        f'<div class="dominance-feature-copy"><h3>{hescape(featured[2])}</h3><p>{hescape(featured[3])}</p></div>'
+        f'</article>'
+    )
+    grid_html = "".join(
+        f'<article class="dominance-feature">'
+        f'<div class="dominance-feature-media"><img src="{p}{src}" alt="{hescape(alt)}" loading="lazy" width="420" height="300"></div>'
+        f'<div class="dominance-feature-copy"><h3>{hescape(title)}</h3><p>{hescape(desc)}</p></div>'
+        f'</article>'
+        for src, alt, title, desc in rest
+    )
+    return f'<div class="dominance-showcase">{feature_html}<div class="dominance-grid">{grid_html}</div></div>'
 
 
 def form_open(subject, css_class=""):
@@ -744,12 +1154,8 @@ def build_index():
         for w in WHY_TSBR[:3]
     )
     case_previews = "".join(case_study_html(c, full=False) for c in CASE_STUDIES[:2])
-    blog_cards = "".join(
-        f'<a href="blog/{a["slug"]}" class="card card-link blog-card"><div class="tag">{a["tag"]}</div>'
-        f'<h3 style="margin-top:0.75rem">{a["title"]}</h3><p>{a["desc"]}</p>'
-        f'<span class="link-arrow">Read article &rarr;</span></a>'
-        for a in BLOG_ARTICLES[:3]
-    )
+    blog_cards = blog_cards_html()
+    blog_hero = blog_hero_banners_html()
     loc_cards = "".join(
         f'<a href="{fn}" class="card card-link"><h3>{LOCATION_META[fn]["short"]}</h3>'
         f'<p>{join_text(LOCATION_RICH[fn]["local_intro"])[:120]}...</p><span class="link-arrow">View market &rarr;</span></a>'
@@ -764,17 +1170,36 @@ def build_index():
     ) + header(active="home") + f"""
     <main id="main">
         {breadcrumb_html([("Home", None)])}
-        <section class="hero">
+        <section class="hero hero-with-bg">
+            <div class="hero-bg-media" aria-hidden="true">
+                <video autoplay muted loop playsinline preload="metadata" poster="assets/images/dominance-future-1.jpg">
+                    <source src="assets/videos/hero-branded-aggressive-1.mp4" type="video/mp4">
+                </video>
+                <img src="assets/images/dominance-future-1.jpg" alt="" loading="eager" width="1920" height="1080">
+            </div>
+            <div class="hero-bg-scrim" aria-hidden="true"></div>
+            <div class="hero-orb hero-orb-1" aria-hidden="true"></div>
+            <div class="hero-orb hero-orb-2" aria-hidden="true"></div>
             <div class="container">
                 <div class="hero-grid">
                     <div>
-                        <span class="hero-eyebrow">Texas B2B Local Search &middot; Arlington HQ</span>
-                        <h1>Turn overlooked companies into market cornerstones.</h1>
+                        <span class="hero-eyebrow">Texas B2B Search Agency &middot; Arlington HQ</span>
+                        <h1>Engineered visibility for <span class="hero-accent">Texas B2B</span> leaders.</h1>
                         <p class="hero-lead">Michael Kaswatuka and The Stone Builders Rejected help serious Texas B2B businesses rank in Google Maps, win organic local search, and get cited in AI Overviews &mdash; so commercial buyers find you first, not your competitors.</p>
+                        <div class="hero-chips">
+                            <span class="hero-chip is-live">Maps &middot; Organic &middot; AI</span>
+                            <span class="hero-chip">DFW &middot; Houston &middot; Austin</span>
+                            <span class="hero-chip">B2B Lead Systems</span>
+                        </div>
                         {aeo_summary_html("The Stone Builders Rejected (TSBR) is a Texas B2B local SEO agency in Arlington that optimizes Google Business Profiles, builds citation and content silos, and engineers AI Overview visibility so commercial buyers find your company first across DFW, Houston, Austin, San Antonio, and statewide.")}
                         <div class="hero-actions">
                             <a href="contact.html" class="btn btn-primary">Get Your Free Audit</a>
                             <a href="case-studies.html" class="btn btn-secondary">See Results</a>
+                        </div>
+                        <div class="hero-metrics">
+                            <div class="hero-metric"><strong>Top 3</strong><span>Map Pack target</span></div>
+                            <div class="hero-metric"><strong>90d</strong><span>Avg. dominance</span></div>
+                            <div class="hero-metric"><strong>4.3&times;</strong><span>Lead lift</span></div>
                         </div>
                     </div>
                     <div class="hero-video-wrap">
@@ -787,6 +1212,10 @@ def build_index():
             </div>
         </section>
 
+        {blog_hero}
+
+        <hr class="section-divider" aria-hidden="true">
+
         <div class="trust-bar">
             <div class="container trust-items">
                 <div><strong>12+</strong><span>Years Texas local SEO</span></div>
@@ -797,7 +1226,8 @@ def build_index():
             </div>
         </div>
 
-        <section class="section" id="services">
+        <section class="section section-tint section-has-bg" id="services">
+            {section_bg_media_html(video_src="assets/videos/hero-optimized-2.mp4", poster="assets/images/service-features-bg.jpg")}
             <div class="container">
                 <div class="section-header">
                     <div class="eyebrow">What We Do</div>
@@ -833,14 +1263,17 @@ def build_index():
             </div>
         </section>
 
-        <section class="section section-alt">
+        <section class="section section-warm section-has-bg">
+            {section_bg_media_html(image_src="assets/images/hero-branded-aggressive-11.jpg")}
             <div class="container media-section">
                 <div>
+                    <div class="section-header-left">
                     <div class="eyebrow">Why TSBR</div>
                     <h2>Built for the companies big agencies ignore</h2>
                     <p>The name comes from Psalm 118:22 &mdash; the stone the builders rejected became the cornerstone. We turn overlooked Texas B2B companies into the dominant, trusted choice in their markets.</p>
                     <p>Direct access to Mike Kaswatuka. Map Pack positions, AI citations, and qualified leads &mdash; not vanity metrics.</p>
                     <a href="about.html" class="btn btn-secondary" style="margin-top:1rem">Our story</a>
+                    </div>
                 </div>
                 <div class="media-frame">
                     <img src="assets/images/hero-branded-aggressive-10.jpg" alt="The Stone Builders Rejected Texas local SEO agency" width="800" height="600" loading="lazy" decoding="async">
@@ -848,14 +1281,14 @@ def build_index():
             </div>
         </section>
 
-        <section class="section section-alt" id="process">
+        <section class="section section-tint" id="process">
             <div class="container">
                 <div class="section-header">
                     <div class="eyebrow">How It Works</div>
                     <h2>A clear path from invisible to dominant</h2>
                     <p>Our five-phase framework has delivered consistent Map Pack and AI Overview results for industrial suppliers, contractors, manufacturers, and professional services firms across Texas.</p>
                 </div>
-                <div class="steps" style="grid-template-columns:1fr">
+                <div class="steps steps-timeline" style="grid-template-columns:1fr">
                     {process_html}
                 </div>
             </div>
@@ -876,7 +1309,7 @@ def build_index():
         <section class="section section-alt">
             <div class="container">
                 <div class="section-header">
-                    <div class="eyebrow">Case Studies</div>
+                    <div class="eyebrow">Proof</div>
                     <h2>Real outcomes for Texas B2B companies</h2>
                 </div>
                 {case_previews}
@@ -884,7 +1317,7 @@ def build_index():
             </div>
         </section>
 
-        <section class="section">
+        <section class="section section-tint">
             <div class="container">
                 <div class="section-header">
                     <div class="eyebrow">Texas Markets</div>
@@ -898,32 +1331,59 @@ def build_index():
             </div>
         </section>
 
-        <section class="section section-alt">
+        <section class="section voices-section section-has-bg">
+            {section_bg_media_html(image_src="assets/images/testimonials-bg.jpg")}
             <div class="container">
                 <div class="section-header">
                     <div class="eyebrow">Client Voices</div>
                     <h2>What Texas business owners say</h2>
+                    <p>Verified five-star feedback from Texas B2B companies we have helped dominate local search.</p>
                 </div>
-                <div class="card-grid card-grid-3">
+                <div class="card-grid card-grid-3 voices-grid">
                     {testimonials_html(TESTIMONIALS[:3])}
                 </div>
             </div>
         </section>
 
-        <section class="section">
+        <section class="section section-alt" id="google-reviews">
+            <div class="container">
+                <div class="section-header">
+                    <div class="eyebrow">Google Reviews</div>
+                    <h2>Verified Google Business Profile reviews</h2>
+                    <p>Real five-star feedback from Texas B2B clients who partnered with The Stone Builders Rejected.</p>
+                </div>
+                <div class="gmb-widget">
+                    <div class="gmb-widget-header">
+                        <span class="gmb-logo">G</span>
+                        <div>
+                            <strong>The Stone Builders Rejected</strong>
+                            <span class="gmb-rating">5.0 &middot; {len(TESTIMONIALS)}+ reviews on Google</span>
+                        </div>
+                        <a href="{hescape(SOCIAL_URLS["google"])}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener noreferrer">View on Google</a>
+                    </div>
+                    <div class="gmb-reviews-grid">
+                        {gmb_reviews_html(TESTIMONIALS, 3)}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section insights-section section-has-bg">
+            {section_bg_media_html(video_src="assets/videos/hero-optimized-3.mp4", poster="assets/images/blog-ai-content.jpg")}
             <div class="container">
                 <div class="section-header">
                     <div class="eyebrow">Insights</div>
                     <h2>Latest from the blog</h2>
+                    <p>Every article links to the full post and updates when new content is published.</p>
                 </div>
-                <div class="card-grid card-grid-3">
+                <div class="card-grid card-grid-2 card-grid-3 insights-grid">
                     {blog_cards}
                 </div>
                 <p class="text-center" style="margin-top:2rem"><a href="blog.html" class="btn btn-secondary">All articles</a></p>
             </div>
         </section>
 
-        <section class="section section-alt">
+        <section class="section section-warm">
             <div class="container">
                 <div class="section-header">
                     <div class="eyebrow">Authority</div>
@@ -933,7 +1393,8 @@ def build_index():
             </div>
         </section>
 
-        <section class="section">
+        <section class="section section-alt section-has-bg">
+            {section_bg_media_html(video_src="assets/videos/hero-video.mp4", poster="assets/images/hero-branded-9.jpg")}
             <div class="container">
                 <div class="section-header">
                     <div class="eyebrow">In action</div>
@@ -943,13 +1404,15 @@ def build_index():
             </div>
         </section>
 
-        <section class="section section-alt">
+        <section class="section section-dark dominance-section section-has-bg">
+            {section_bg_media_html(video_src="assets/videos/service-features-bg-video.mp4", poster="assets/images/dominance-future-2.jpg")}
             <div class="container">
                 <div class="section-header">
-                    <div class="eyebrow">Gallery</div>
+                    <div class="eyebrow">In Practice</div>
                     <h2>Texas B2B search dominance in practice</h2>
+                    <p>Map Pack ownership, AI citations, and lead pipelines — visualized the way modern Texas B2B buyers experience your brand.</p>
                 </div>
-                {media_gallery_html(limit=8)}
+                {dominance_showcase_html()}
             </div>
         </section>
 
@@ -959,30 +1422,31 @@ def build_index():
                     <div class="eyebrow">FAQ</div>
                     <h2>Common questions</h2>
                 </div>
-                <div class="faq-list">
+                <div class="faq-list faq-grid">
                     {faq_html(HOME_FAQ + EXTRA_FAQ[:4])}
                 </div>
                 <p class="text-center" style="margin-top:1.5rem"><a href="contact.html">More questions? Get in touch &rarr;</a></p>
             </div>
         </section>
 
-        <section class="bg-image-section" style="background-image:url('assets/images/estimation-bg.jpg')">
+        <section class="bg-image-section bg-image-section-bright" style="background-image:url('assets/images/dominance-future-3.jpg')">
             <div class="container two-col two-col-wide">
                 <div>
-                    <h2>Your free audit includes everything.</h2>
-                    <p>Every audit request gets a personal review of your local search landscape across Texas.</p>
-                    {audit_list_html()}
+                    <h2>Your free audit, distilled.</h2>
+                    <p>Mike Kaswatuka personally reviews your Texas local search landscape and delivers a focused action plan — not a generic checklist.</p>
+                    {audit_summary_html()}
                 </div>
                 <div class="form-card">
                     <h3 style="margin-top:0">Request your free audit</h3>
                     <p style="color:var(--text-muted);font-size:0.9375rem">Custom estimate within 24 hours on weekdays.</p>
-                    <a href="contact.html" class="btn btn-primary" style="width:100%;margin-top:1rem">Go to contact form</a>
+                    {home_audit_form_html()}
                     <p style="text-align:center;margin:1rem 0 0;font-size:0.875rem">Or call <a href="tel:{PHONE_TEL}">{PHONE}</a></p>
                 </div>
             </div>
         </section>
 
-        <section class="cta-band" id="contact">
+        <section class="cta-band cta-band-has-bg" id="contact">
+            {section_bg_media_html(video_src="assets/videos/hero-branded-aggressive-2.mp4", poster="assets/images/dominance-future-4.jpg")}
             <div class="container">
                 <h2>Ready to become the cornerstone of your market?</h2>
                 <p>Request a free audit of your Google Business Profile, local visibility, and AI Overview potential.</p>
@@ -1440,7 +1904,7 @@ def build_testimonials():
 
     portfolio = "".join(
         f'<article class="portfolio-card">'
-        f'<div class="portfolio-img"><img src="assets/images/hero-branded-{8 + i}.jpg" alt="{CASE_STUDIES[i]["title"]}" loading="lazy"></div>'
+        f'<div class="portfolio-img"><img src="{PORTFOLIO_IMAGES[i]}" alt="{CASE_STUDIES[i]["title"]}" loading="lazy"></div>'
         f'<div class="portfolio-body"><span class="tag">{CASE_STUDIES[i]["tag"]}</span>'
         f'<h3>{CASE_STUDIES[i]["title"]}</h3>'
         f'<p>{CASE_STUDIES[i]["challenge"][:140]}...</p>'
@@ -1858,27 +2322,21 @@ def build_locations():
 
 
 def build_blog_index():
-    cards = ""
-    for a in BLOG_ARTICLES:
-        cards += f"""
-                    <a href="blog/{a['slug']}" class="card card-link blog-card">
-                        <div class="tag">{a['tag']}</div>
-                        <h3 style="margin-top:0.75rem">{a['title']}</h3>
-                        <p>{a['desc']}</p>
-                        <span style="font-size:0.8125rem;color:var(--text-muted)">{a['read_time']} read</span>
-                        <span class="link-arrow">Read article &rarr;</span>
-                    </a>"""
+    category_nav = "".join(
+        f'<a href="#{blog_tag_anchor(key)}" class="blog-topic-pill">{hescape(label)}</a>'
+        for key, label in BLOG_TOPIC_LABELS.items()
+    )
     body = f"""
+        {blog_hero_banners_html()}
         <section class="section">
             <div class="container">
-                <div class="prose-wide" style="margin-bottom:2.5rem">
+                <div class="prose-wide" style="margin-bottom:1.5rem">
                     <p>In-depth articles on Google Business Profile optimization, AI Overviews, local SEO, citations, and B2B lead generation &mdash; written specifically for Texas commercial and industrial companies. Every article is authored by Mike Kaswatuka based on real client work across DFW, Houston, Austin, San Antonio, and statewide markets.</p>
                 </div>
-                <div class="card-grid card-grid-2">
-                    {cards}
-                </div>
+                <nav class="blog-topic-nav" aria-label="Browse by topic">{category_nav}</nav>
             </div>
         </section>
+        {blog_category_sections_html()}
         <section class="section section-alt">
             <div class="container">
                 <h2 class="text-center mb-lg">Written by Texas local search authority</h2>
@@ -1978,8 +2436,10 @@ def build_resources():
 def build_ai_news():
     articles = ""
     for a in AI_NEWS_ARTICLES:
+        slug = a.get("slug", "")
+        anchor = f' id="{hescape(slug)}"' if slug else ""
         articles += f"""
-                <article class="case-study">
+                <article class="case-study ai-news-article"{anchor}>
                     <div class="tag">{a['date']}</div>
                     <h2>{a['title']}</h2>
                     <p style="color:var(--text-muted)">{a['summary']}</p>
@@ -2038,6 +2498,74 @@ def build_ai_news():
     ))
 
 
+HEADING_RE = re.compile(r"<h([1-4])([^>]*)>(.*?)</h\1>", re.IGNORECASE | re.DOTALL)
+
+
+def _strip_html_tags(fragment):
+    return re.sub(r"<[^>]+>", "", fragment).strip()
+
+
+def blog_inline_figure_html(image, depth=1):
+    prefix = "../" * depth
+    return (
+        f'<figure class="blog-inline-figure">'
+        f'<img src="{prefix}{image["src"]}" alt="{hescape(image["alt"])}" '
+        f'loading="lazy" width="1280" height="720">'
+        f'<figcaption>{hescape(image["caption"])}</figcaption>'
+        f"</figure>"
+    )
+
+
+def blog_youtube_embed_html(video, depth=1):
+    video_id = hescape(video["id"])
+    title = hescape(video["title"])
+    caption = hescape(video.get("caption", video["title"]))
+    return (
+        f'<div class="blog-youtube-embed">'
+        f'<div class="blog-youtube-embed__inner">'
+        f'<iframe src="https://www.youtube-nocookie.com/embed/{video_id}" '
+        f'title="{title}" loading="lazy" '
+        f'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" '
+        f'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>'
+        f"</div>"
+        f'<p class="blog-youtube-embed__caption">{caption}</p>'
+        f"</div>"
+    )
+
+
+def enrich_blog_body_html(article, depth=1):
+    body = article["body_html"]
+    slug = article["slug"]
+    headings = list(HEADING_RE.finditer(body))
+    if not headings:
+        return body
+
+    insertions = []
+    inline_images = BLOG_INLINE_IMAGES.get(slug, [])
+    if inline_images:
+        rng = random.Random(slug)
+        eligible = list(range(len(headings)))
+        pick_count = min(len(inline_images), len(eligible))
+        chosen = sorted(rng.sample(eligible, pick_count))
+        for idx, heading_idx in enumerate(chosen):
+            heading_text = _strip_html_tags(headings[heading_idx].group(3))
+            figure = blog_inline_figure_html(inline_images[idx], depth=depth)
+            insertions.append((headings[heading_idx].end(), figure))
+
+    video = BLOG_YOUTUBE_VIDEOS.get(slug)
+    if video:
+        h2_headings = [match for match in headings if match.group(1) == "2"]
+        if h2_headings:
+            midpoint = len(h2_headings) // 2
+            target = h2_headings[midpoint]
+            embed = blog_youtube_embed_html(video, depth=depth)
+            insertions.append((target.end(), embed))
+
+    for position, fragment in sorted(insertions, key=lambda item: item[0], reverse=True):
+        body = f"{body[:position]}\n{fragment}\n{body[position:]}"
+    return body
+
+
 def build_blog_posts():
     blog_dir = ROOT / "blog"
     blog_dir.mkdir(exist_ok=True)
@@ -2051,28 +2579,31 @@ def build_blog_posts():
             for o in [x for x in BLOG_ARTICLES if x["slug"] != a["slug"]][:5]
         )
         body = f"""
-        <section class="section">
-            <div class="container prose-wide">
-                <div class="blog-meta">
-                    <span class="badge">{a['tag']}</span>
-                    <span>By Mike Kaswatuka</span>
-                    <span>The Stone Builders Rejected</span>
-                    <span>Arlington, TX</span>
-                    <span>{a['read_time']} read</span>
-                </div>
-                <div class="toc">
-                    <h4>In this article</h4>
-                    <ol>{toc}</ol>
-                </div>
-                {a['body_html']}
-                <div class="highlight-box">
-                    <strong>Ready to implement this for your Texas business?</strong>
-                    <p style="margin:0.5rem 0 0"><a href="../contact.html">Request a free GMB and local visibility audit &rarr;</a></p>
-                </div>
-                <div class="related-links">
-                    <span style="font-weight:600;color:var(--cyan);margin-right:0.5rem">Related:</span>
-                    {related}
-                </div>
+        <section class="section blog-post-section">
+            <div class="container blog-post-layout">
+                <article class="blog-post-main prose-wide">
+                    <div class="blog-meta">
+                        <span class="badge">{a['tag']}</span>
+                        <span>By Mike Kaswatuka</span>
+                        <span>The Stone Builders Rejected</span>
+                        <span>Arlington, TX</span>
+                        <span>{a['read_time']} read</span>
+                    </div>
+                    <div class="toc">
+                        <h4>In this article</h4>
+                        <ol>{toc}</ol>
+                    </div>
+                    {enrich_blog_body_html(a, depth=1)}
+                    <div class="highlight-box">
+                        <strong>Ready to implement this for your Texas business?</strong>
+                        <p style="margin:0.5rem 0 0"><a href="../contact.html">Request a free GMB and local visibility audit &rarr;</a></p>
+                    </div>
+                    <div class="related-links">
+                        <span style="font-weight:600;color:var(--gold-bright);margin-right:0.5rem">Related:</span>
+                        {related}
+                    </div>
+                </article>
+                {blog_sidebar_html(a, depth=1)}
             </div>
         </section>"""
         post_path = f"blog/{a['slug']}"
@@ -2082,14 +2613,14 @@ def build_blog_posts():
             schema_organization(),
             schema_article(a["title"], a["desc"], post_url, pub_date, a["tag"]),
             schema_webpage(a["title"], a["desc"], post_url),
-            schema_breadcrumb([("Home", "../index.html"), ("Blog", "../blog.html"), (a["title"], None)]),
+            schema_breadcrumb([("Home", "index.html"), ("Blog", "blog.html"), (a["title"], None)]),
         )
         write(blog_dir / a["slug"], page_template(
             f"{a['title']} | TSBR",
             a["desc"],
             "Blog", a["title"], a["desc"], body, active="blog", depth=1,
             canonical=post_url, og_type="article",
-            breadcrumbs=[("Home", "../index.html"), ("Blog", "../blog.html"), (a["title"], None)],
+            breadcrumbs=[("Home", "index.html"), ("Blog", "blog.html"), (a["title"], None)],
             aeo_summary=a["desc"],
             silo_nav=blog_silo(a),
             extra=post_schema,
@@ -2451,13 +2982,13 @@ cd scripts && npm install && npm run visual-audit
 - **Phone:** {PHONE}
 - **Email:** {EMAIL}
 
-Rebuilt {YEAR} — galactic theme, full Texas B2B content silo.
+Rebuilt {YEAR} — Obsidian Command theme, full Texas B2B content silo.
 """
     write(ROOT / "README.md", readme)
 
 
 def main():
-    print("Building TSBR website (galactic theme)...")
+    print("Building TSBR website (Obsidian Command theme)...")
     build_index()
     build_about()
     build_services()

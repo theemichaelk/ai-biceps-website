@@ -49,4 +49,4 @@ cd scripts && npm install && npm run visual-audit
 - **Phone:** (682) 206-4178
 - **Email:** hello@tsbrenterprises.com
 
-Rebuilt 2026 — galactic theme, full Texas B2B content silo.
+Rebuilt 2026 — Obsidian Command theme, full Texas B2B content silo.

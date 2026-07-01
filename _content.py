@@ -25,7 +25,7 @@ def faq_html(items):
 
 
 def testimonials_html(items, limit=None):
-    """Return HTML for testimonial blocks."""
+    """Return HTML for testimonial blocks with star ratings."""
     subset = items[:limit] if limit else items
     parts = []
     for t in subset:
@@ -33,10 +33,18 @@ def testimonials_html(items, limit=None):
         author = escape(t["author"])
         company = escape(t["company"])
         city = escape(t["city"])
+        stars = t.get("stars", 5)
+        star_str = "★" * stars + "☆" * (5 - stars)
         parts.append(
-            f'<div class="testimonial">'
+            f'<div class="testimonial testimonial-review">'
+            f'<div class="review-badge">'
+            f'<span class="review-google" aria-hidden="true">G</span>'
+            f'<div class="review-meta">'
+            f'<div class="testimonial-stars" aria-label="{stars} out of 5 stars">{star_str}</div>'
+            f'<span class="review-verified">Verified 5-star review</span>'
+            f'</div></div>'
             f'<blockquote>"{quote}"</blockquote>'
-            f'<cite>&mdash; {author}, {company}, {city}</cite>'
+            f'<cite><strong>{author}</strong><span>{company} &middot; {city}</span></cite>'
             f'</div>'
         )
     return "\n".join(parts)
@@ -665,6 +673,161 @@ AUDIT_INCLUDES = [
     "Lead attribution and tracking gap analysis",
     "Written 90-day prioritized action plan",
 ]
+
+AUDIT_SUMMARY = [
+    "Full Google Business Profile & listing health review",
+    "Map Pack and organic ranking snapshot for your top keywords",
+    "Competitor teardown plus citation and NAP consistency check",
+    "Review velocity, website local SEO, and schema assessment",
+    "AI Overview visibility review with a written 90-day action plan",
+]
+
+BLOG_IMAGE_MAP = {
+    "gmb-velocity-system-texas.html": "assets/images/blog-gmb-velocity.jpg",
+    "google-business-profile-ranking-texas.html": "assets/images/blog-gbp-ranking.jpg",
+    "optimizing-for-ai-overviews-texas-businesses.html": "assets/images/blog-ai-overviews.jpg",
+    "b2b-local-seo-strategies-texas.html": "assets/images/blog-b2b-local-seo.jpg",
+    "citation-building-nap-consistency-texas.html": "assets/images/blog-citations.jpg",
+    "ai-first-content-architecture-texas.html": "assets/images/blog-ai-content.jpg",
+}
+
+BLOG_INLINE_IMAGES = {
+    "gmb-velocity-system-texas.html": [
+        {
+            "src": "assets/images/blog-inline-gmb-velocity-system-texas-1.jpg",
+            "alt": "Futuristic Texas Map Pack velocity dashboard for GMB dominance",
+            "caption": "Velocity treats your Google Business Profile as a living revenue asset across Texas metros.",
+        },
+        {
+            "src": "assets/images/blog-inline-gmb-velocity-system-texas-2.jpg",
+            "alt": "GMB optimization workflow with reviews, photos, and weekly posts",
+            "caption": "Photo velocity, posts, and review systems compound prominence faster than one-time setup.",
+        },
+        {
+            "src": "assets/images/blog-inline-gmb-velocity-system-texas-3.jpg",
+            "alt": "Map Pack search results over Texas commercial districts",
+            "caption": "Texas B2B buyers compare Map Pack listings in seconds — Velocity engineers instant credibility.",
+        },
+    ],
+    "google-business-profile-ranking-texas.html": [
+        {
+            "src": "assets/images/blog-inline-google-business-profile-ranking-texas-1.jpg",
+            "alt": "Google Business Profile ranking interface over DFW",
+            "caption": "Map Pack ranking blends proximity, relevance, and prominence — all trainable with GBP signals.",
+        },
+        {
+            "src": "assets/images/blog-inline-google-business-profile-ranking-texas-2.jpg",
+            "alt": "Photo velocity deployment for Texas commercial profiles",
+            "caption": "Geo-tagged facility and project imagery is a top-three prominence lever in Texas metros.",
+        },
+        {
+            "src": "assets/images/blog-inline-google-business-profile-ranking-texas-3.jpg",
+            "alt": "Map Pack competition visualization for Texas local search",
+            "caption": "Winning the top three Map Pack slots means out-signaling competitors week after week.",
+        },
+    ],
+    "optimizing-for-ai-overviews-texas-businesses.html": [
+        {
+            "src": "assets/images/blog-inline-optimizing-for-ai-overviews-texas-businesses-1.jpg",
+            "alt": "AI Overviews citing Texas B2B vendors in search",
+            "caption": "AI Overviews pull entity data from GBP, citations, and structured site content.",
+        },
+        {
+            "src": "assets/images/blog-inline-optimizing-for-ai-overviews-texas-businesses-2.jpg",
+            "alt": "Entity graph feeding generative search for Texas businesses",
+            "caption": "Consistent NAP, schema, and topical authority help AI models recommend your firm.",
+        },
+        {
+            "src": "assets/images/blog-inline-optimizing-for-ai-overviews-texas-businesses-3.jpg",
+            "alt": "Procurement staff using AI to find Texas vendors",
+            "caption": "Texas procurement teams increasingly ask AI for vendor shortlists before they call.",
+        },
+    ],
+    "b2b-local-seo-strategies-texas.html": [
+        {
+            "src": "assets/images/blog-inline-b2b-local-seo-strategies-texas-1.jpg",
+            "alt": "B2B local SEO funnel for Texas industrial buyers",
+            "caption": "B2B local SEO targets quote-ready searches, not informational traffic that wastes sales time.",
+        },
+        {
+            "src": "assets/images/blog-inline-b2b-local-seo-strategies-texas-2.jpg",
+            "alt": "Texas B2B verticals connected through local search pathways",
+            "caption": "Industrial, contracting, and professional firms win with market-specific keyword architecture.",
+        },
+        {
+            "src": "assets/images/blog-inline-b2b-local-seo-strategies-texas-3.jpg",
+            "alt": "High-value Texas B2B buyer journey through local search",
+            "caption": "One commercial contract can justify aggressive local search investment across Texas markets.",
+        },
+    ],
+    "citation-building-nap-consistency-texas.html": [
+        {
+            "src": "assets/images/blog-inline-citation-building-nap-consistency-texas-1.jpg",
+            "alt": "NAP consistency network across Texas citation sources",
+            "caption": "Conflicting name, address, or phone data splits trust signals across directories and Maps.",
+        },
+        {
+            "src": "assets/images/blog-inline-citation-building-nap-consistency-texas-2.jpg",
+            "alt": "Citation audit dashboard aligning NAP fields",
+            "caption": "Citation cleanup is foundational — prominence tactics fail when entity data disagrees.",
+        },
+        {
+            "src": "assets/images/blog-inline-citation-building-nap-consistency-texas-3.jpg",
+            "alt": "Local authority graph for Texas B2B citations",
+            "caption": "Authoritative citations corroborate your GBP and reinforce AI entity understanding.",
+        },
+    ],
+    "ai-first-content-architecture-texas.html": [
+        {
+            "src": "assets/images/blog-inline-ai-first-content-architecture-texas-1.jpg",
+            "alt": "AI-first content silos and schema for Texas B2B sites",
+            "caption": "Content architecture should answer buyer questions in layers machines can parse and cite.",
+        },
+        {
+            "src": "assets/images/blog-inline-ai-first-content-architecture-texas-2.jpg",
+            "alt": "Structured content pillars feeding search and AI models",
+            "caption": "Service silos, FAQs, and location hubs give Google and AI models unambiguous entity context.",
+        },
+        {
+            "src": "assets/images/blog-inline-ai-first-content-architecture-texas-3.jpg",
+            "alt": "Content operations center for AI retrieval optimization",
+            "caption": "AI-first architecture pairs human expertise with structured data Texas buyers can trust.",
+        },
+    ],
+}
+
+BLOG_YOUTUBE_VIDEOS = {
+    "gmb-velocity-system-texas.html": {
+        "id": "vSDdAWwn8LU",
+        "title": "Google Business Profile Optimization",
+        "caption": "Core GBP optimization principles that align with Velocity signal deployment.",
+    },
+    "google-business-profile-ranking-texas.html": {
+        "id": "srBGQd_27RU",
+        "title": "How to Rank in Google Maps",
+        "caption": "Map Pack ranking fundamentals every Texas GBP playbook should reinforce.",
+    },
+    "optimizing-for-ai-overviews-texas-businesses.html": {
+        "id": "uza9GX0E2mw",
+        "title": "AI Overviews and Search Visibility",
+        "caption": "How generative answers surface businesses — and what Texas B2B sites should optimize.",
+    },
+    "b2b-local-seo-strategies-texas.html": {
+        "id": "Xv0mN5jExiU",
+        "title": "Local SEO for Business Growth",
+        "caption": "Local search strategy patterns that translate directly to Texas B2B lead generation.",
+    },
+    "citation-building-nap-consistency-texas.html": {
+        "id": "4sR3Uxi1GTA",
+        "title": "Local Citations and NAP Consistency",
+        "caption": "Why consistent citations remain a top local ranking factor for Texas entities.",
+    },
+    "ai-first-content-architecture-texas.html": {
+        "id": "pQSVsHvpTTA",
+        "title": "Content Strategy for Search and AI",
+        "caption": "Structuring topical authority so search engines and AI models understand your offer.",
+    },
+}
 
 
 # ---------------------------------------------------------------------------
@@ -2169,6 +2332,7 @@ BLOG_ARTICLES = [
 
 AI_NEWS_ARTICLES = [
     {
+        "slug": "ai-overviews-texas-commercial-queries",
         "title": "Google Expands AI Overviews for Commercial Local Queries in Texas Markets",
         "date": "June 12, 2026",
         "summary": "Generative summaries now appear more frequently for B2B service searches in DFW, Houston, and Austin, increasing the importance of entity-consistent GMB and website signals.",
@@ -2180,6 +2344,7 @@ AI_NEWS_ARTICLES = [
 """,
     },
     {
+        "slug": "map-pack-houston-industrial-update",
         "title": "Map Pack Algorithm Update Hits Houston Industrial Corridors",
         "date": "May 28, 2026",
         "summary": "Recent ranking volatility along the Ship Channel and Katy Freeway industrial zones correlates with review recency and photo freshness signals.",
@@ -2190,6 +2355,7 @@ AI_NEWS_ARTICLES = [
 """,
     },
     {
+        "slug": "apple-business-connect-texas-procurement",
         "title": "Apple Business Connect Gains Traction Among Texas Procurement Teams",
         "date": "May 14, 2026",
         "summary": "B2B buyers on Apple devices increasingly discover vendors through Apple Maps, making Business Connect optimization a priority alongside Google.",
@@ -2200,6 +2366,7 @@ AI_NEWS_ARTICLES = [
 """,
     },
     {
+        "slug": "gmb-insights-b2b-attribution",
         "title": "New Google Business Profile Insights Metrics Help B2B Attribution",
         "date": "April 30, 2026",
         "summary": "Updated GMB insights expose more call and direction request data, helping Texas companies tie Maps visibility to pipeline.",
@@ -2210,6 +2377,7 @@ AI_NEWS_ARTICLES = [
 """,
     },
     {
+        "slug": "dfw-duplicate-listing-crackdown",
         "title": "DFW Multi-Location Brands Face Duplicate Listing Crackdown",
         "date": "April 16, 2026",
         "summary": "Google aggressive duplicate suppression in Dallas-Fort Worth requires merger and citation cleanup for franchises and acquired branches.",
@@ -2220,6 +2388,7 @@ AI_NEWS_ARTICLES = [
 """,
     },
     {
+        "slug": "texas-b2b-local-search-benchmark-2026",
         "title": "TSBR Publishes 2026 Texas B2B Local Search Benchmark Report",
         "date": "March 22, 2026",
         "summary": "Internal aggregate data shows average 4.3x qualified lead growth and seventy-four day median time to multi-keyword Map Pack dominance.",

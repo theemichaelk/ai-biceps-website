@@ -76,21 +76,41 @@ ENGAGEMENT_MONTHS = [
 ]
 
 MEDIA_GALLERY = [
-    ("assets/images/1.jpg", "TSBR Texas local SEO authority"),
-    ("assets/images/2.jpg", "Google Business Profile optimization"),
-    ("assets/images/3.jpg", "B2B lead generation systems"),
-    ("assets/images/4.jpg", "Arlington DFW market expertise"),
-    ("assets/images/5.jpg", "Houston commercial search dominance"),
-    ("assets/images/6.jpg", "Austin metro growth strategies"),
-    ("assets/images/7.jpg", "AI Overview optimization Texas"),
-    ("assets/images/hero-branded-8.jpg", "The Stone Builders Rejected brand"),
-    ("assets/images/hero-branded-9.jpg", "Mike Kaswatuka local search consultant"),
+    ("assets/images/dominance-future-1.jpg", "Texas Map Pack dominance command center"),
+    ("assets/images/dominance-future-2.jpg", "Search analytics hologram over Texas skyline"),
+    ("assets/images/dominance-future-3.jpg", "GMB optimization interface in action"),
+    ("assets/images/dominance-future-4.jpg", "AI search visibility for Texas B2B"),
+    ("assets/images/blog-gmb-velocity.jpg", "GMB Velocity System insights"),
+    ("assets/images/blog-ai-overviews.jpg", "AI Overview optimization"),
     ("assets/images/hero-branded-aggressive-10.jpg", "Texas B2B marketing results"),
     ("assets/images/hero-branded-aggressive-11.jpg", "Map Pack ranking proof"),
-    ("assets/images/hero-branded-aggressive-12.jpg", "Industrial Texas SEO"),
-    ("assets/images/service-features-bg.jpg", "GMB Velocity System features"),
-    ("assets/images/testimonials-bg.jpg", "Client success stories"),
-    ("assets/images/estimation-bg.jpg", "Free audit and strategy"),
+]
+
+DOMINANCE_SHOWCASE = [
+    (
+        "assets/images/dominance-future-5.jpg",
+        "Texas Map Pack dominance command center",
+        "Command-center visibility",
+        "Real-time Map Pack intelligence across every Texas metro you serve — from Arlington HQ to Houston, Austin, and beyond.",
+    ),
+    (
+        "assets/images/dominance-future-6.jpg",
+        "Texas B2B search results hologram",
+        "Rankings that compound",
+        "Organic and Maps positions tracked together so B2B leads scale with authority, not vanity clicks.",
+    ),
+    (
+        "assets/images/dominance-future-3.jpg",
+        "GMB optimization interface",
+        "GMB Velocity in motion",
+        "Weekly posts, review systems, and photo velocity engineered for commercial buyers on the ground.",
+    ),
+    (
+        "assets/images/dominance-future-4.jpg",
+        "AI search visibility",
+        "Cited in AI answers",
+        "Entity signals tuned so generative search recommends your business as the trusted Texas vendor.",
+    ),
 ]
 
 VIDEO_ASSETS = [

@@ -34,3 +34,15 @@ GOOGLE_MAPS_EMBED = os.environ.get(
     "TSBR_GOOGLE_MAPS_EMBED",
     "https://maps.google.com/maps?q=518+Brynmawr+Ct,+Arlington,+TX+76014&output=embed",
 )
+
+# Public profiles — set in .env for production; Google Maps is the default fallback
+_GOOGLE_PROFILE = (
+    "https://www.google.com/maps/search/?api=1&query=The+Stone+Builders+Rejected+Arlington+TX"
+)
+SOCIAL_URLS = {
+    "google": os.environ.get("TSBR_GOOGLE_PROFILE", _GOOGLE_PROFILE),
+    "facebook": os.environ.get("TSBR_FACEBOOK", _GOOGLE_PROFILE),
+    "twitter": os.environ.get("TSBR_TWITTER", _GOOGLE_PROFILE),
+    "instagram": os.environ.get("TSBR_INSTAGRAM", _GOOGLE_PROFILE),
+    "linkedin": os.environ.get("TSBR_LINKEDIN", _GOOGLE_PROFILE),
+}

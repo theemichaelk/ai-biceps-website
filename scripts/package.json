@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "visual-audit": "node visual-audit.mjs"
+    "visual-audit": "node visual-audit.mjs",
+    "http-audit": "python _audit_http.py"
   },
   "devDependencies": {
     "playwright": "^1.52.0"
