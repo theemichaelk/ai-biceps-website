@@ -1,0 +1,63 @@
+Template specific widgets 
+
+------------
+	Home	
+------------
+Left sidebar :
+
+
+Right sidebar :
+Search
+Category
+Recent Posts with Thumbnails
+Social
+
+Top :
+Navbar
+Recent Posts with Thumbnails homepage
+Newsleter for home page
+
+Bottom :
+Footer
+
+Content area :
+Content
+Pagination
+
+
+--------------------------------
+	Layout (Posts,Pages,Cats)	
+--------------------------------
+Left sidebar :
+
+
+Right sidebar :
+Search
+Category
+Recent Posts with Thumbnails
+Social
+
+Top :
+Navbar
+breadcrumb
+
+Bottom :
+Related Posts
+Footer
+
+Content area :
+Content
+Pagination
+
+-----------------
+	Post Body	
+-----------------
+Above title :
+
+Below title :
+
+Below post content :
+About Widget
+
+After X words/paragraphs :
+

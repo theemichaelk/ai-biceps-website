@@ -1,52 +1,25 @@
 # The Stone Builders Rejected (TSBR Enterprises)
 
-Texas B2B local SEO & Google Business Profile agency website.
+Texas Local SEO agency website — **Lever theme** (synced from S3 reference).
 
-### Build
-```bash
-python _build.py
-```
-Regenerates all HTML from `_content.py` (rich content), `_content_extra.py` (supplementary blocks), and `_build.py` (templates).
-
-### Preview
-```bash
+### Local preview
+```powershell
 python -m http.server 8080
 ```
 Open http://localhost:8080
 
-### Configuration
-Copy `.env.example` to `.env` and fill in values. `_config.py` loads `.env` automatically.
-
-| Variable | Purpose |
-|----------|---------|
-| `TSBR_FORMSPREE_ENDPOINT` | Formspree form URL (e.g. `https://formspree.io/f/xxxxx`) |
-| `FORMSPREE_DEPLOY_KEY` | Formspree CLI deploy key (alternative to pasting endpoint) |
-| `TSBR_GA_MEASUREMENT_ID` | Google Analytics 4 ID (e.g. `G-XXXXXXXXXX`) |
-
-### Formspree setup
+### Deploy (Cloudflare Pages)
 ```powershell
-.\scripts\setup-formspree.ps1 -Endpoint "https://formspree.io/f/YOUR_ID"
-# OR with CLI deploy key in .env:
-.\scripts\setup-formspree.ps1 -Deploy
+$env:CLOUDFLARE_API_TOKEN="your-token"
+$env:CLOUDFLARE_ACCOUNT_ID="your-account-id"
+npx wrangler pages deploy . --project-name tsbr-enterprises --branch main
 ```
 
-### Deploy
-```powershell
-.\scripts\deploy.ps1 -Method preview   # local preview
-.\scripts\deploy.ps1 -Method copy       # copy to deploy.config.json path
-.\scripts\deploy.ps1 -Method ftp        # FTP upload
-```
+### Site structure
+- `index.html` — Lever single-page homepage (hero, skills, services, team, newsletter, contact)
+- `lever/assets/` — Lever theme CSS, JS, images, video
+- `blog/` — Blog section (Bootstrap theme)
+- `error.html` — 404 page
 
-### Visual audit
-```powershell
-.\scripts\deploy.ps1 -Method preview    # in one terminal
-cd scripts && npm install && npm run visual-audit
-```
-
-### Business Info
-- **Founder:** Mike Kaswatuka
-- **Address:** 518 Brynmawr Ct, Arlington, TX 76014
-- **Phone:** (682) 206-4178
-- **Email:** hello@tsbrenterprises.com
-
-Rebuilt 2026 — Obsidian Command theme, full Texas B2B content silo.
+### Legacy Python build
+Previous Obsidian Command theme generator files (`_build.py`, `_content.py`, etc.) and old HTML pages are kept for reference under `_legacy/` and in the Python modules at repo root.

@@ -9,3 +9,5 @@ scripts/node_modules/
 scripts/package-lock.json
 scripts/visual-report/
 .wrangler/
+_legacy/
+index-s3-check.html
